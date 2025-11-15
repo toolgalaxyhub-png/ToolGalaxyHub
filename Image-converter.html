@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Image Converter — Bright Blue Tool</title>
+  <style>
+    :root{
+      --brand:#1e90ff; /* bright blue */
+      --bg:#ffffff;
+      --muted:#6b7280;
+      --radius:14px;
+      --gap:16px;
+      --container-width:1100px;
+      --max-preview-height:420px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", Arial;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      background:linear-gradient(180deg, #f7fbff 0%, #ffffff 100%);
+      color:#0f172a;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      padding:24px;
+      display:flex;
+      align-items:flex-start;
+      justify-content:center;
+      gap:var(--gap);
+    }
+
+    .shell{
+      width:100%;
+      max-width:var(--container-width);
+      background:var(--bg);
+      border-radius:18px;
+      box-shadow:0 8px 30px rgba(30,50,100,0.08);
+      padding:20px;
+      display:flex;
+      gap:20px;
+      align-items:flex-start;
+    }
+
+    /* left column: controls */
+    .controls{
+      flex:1 1 360px;
+      min-width:260px;
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+    }
+
+    .title{
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+    .logo{
+      height:46px;width:46px;border-radius:10px;background:linear-gradient(135deg,var(--brand),#6fb8ff);
+      display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:20px;box-shadow:0 6px 18px rgba(30,80,200,0.12)
+    }
+    h1{font-size:18px;margin:0}
+    p.lead{margin:0;color:var(--muted);font-size:13px}
+
+    .card{background:#fbfdff;border-radius:12px;padding:12px;border:1px solid rgba(30,144,255,0.06)}
+
+    .uploader{
+      border:2px dashed rgba(30,144,255,0.18);
+      border-radius:12px;padding:12px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .12s ease-in-out;
+      min-height:90px;flex-direction:column;justify-content:center;text-align:center
+    }
+    .uploader.dragover{background:linear-gradient(180deg,rgba(30,144,255,0.03),rgba(30,144,255,0.01));transform:translateY(-2px)}
+    .uploader input{display:none}
+    .uploader strong{color:var(--brand)}
+
+    label.row{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
+    .controls .row .inline{display:flex;gap:8px;align-items:center}
+
+    select, input[type=range], input[type=file], button{
+      width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(15,23,42,0.06);font-size:14px;background:white
+    }
+    .small{font-size:13px}
+
+    .actions{display:flex;gap:10px}
+    .btn{background:var(--brand);color:white;border:none;padding:10px 14px;border-radius:10px;font-weight:600;cursor:pointer}
+    .btn.ghost{background:transparent;color:var(--brand);border:1px solid rgba(30,144,255,0.12)}
+    .btn:disabled{opacity:.55;cursor:not-allowed}
+
+    /* right column: preview */
+    .preview{
+      flex:1 1 420px;min-width:260px;display:flex;flex-direction:column;gap:12px;align-items:stretch
+    }
+    .image-frame{background:linear-gradient(180deg,#ffffff,#fbfdff);border-radius:12px;padding:12px;border:1px solid rgba(15,23,42,0.04);display:flex;flex-direction:column;gap:12px;align-items:center}
+    .preview-img{
+      width:100%;max-height:var(--max-preview-height);object-fit:contain;border-radius:8px;background:linear-gradient(135deg,#f8fafc,#ffffff);display:block
+    }
+
+    .meta{display:flex;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+    .pill{background:rgba(15,23,42,0.03);padding:6px 10px;border-radius:999px}
+
+    .download-area{display:flex;gap:10px;align-items:center}
+    .size-info{font-size:13px;color:var(--muted)}
+
+    /* responsive */
+    @media (max-width:900px){
+      .shell{flex-direction:column;padding:14px}
+      body{padding:14px}
+    }
+    @media (max-width:420px){
+      :root{--radius:10px}
+      .logo{height:40px;width:40px}
+      .title h1{font-size:16px}
+      .uploader{min-height:84px}
+    }
+
+    /* tiny helpers */
+    .muted{color:var(--muted)}
+    .flex{display:flex}
+    .center{align-items:center}
+
+    footer{font-size:12px;color:var(--muted);margin-top:6px}
+  </style>
+</head>
+<body>
+  <main class="shell" role="main">
+    <section class="controls" aria-labelledby="tool-title">
+      <div class="title">
+        <div class="logo">IC</div>
+        <div>
+          <h1 id="tool-title">Image Converter</h1>
+          <p class="lead">Upload, preview, convert and download compressed images — bright blue theme.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <label class="uploader" id="uploader" for="file-input">
+          <input id="file-input" type="file" accept="image/*" />
+          <div style="font-size:15px;font-weight:600">Drag & drop or click to upload</div>
+          <div class="muted small">Supports JPEG, PNG, WebP, GIF (first frame) — up to 30MB</div>
+        </label>
+
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <label class="row" style="flex:1;min-width:160px">
+            <span class="small">Output format</span>
+            <select id="format-select" aria-label="Select output format">
+              <option value="image/jpeg">JPEG (.jpg)</option>
+              <option value="image/png">PNG (.png)</option>
+              <option value="image/webp">WebP (.webp)</option>
+              <option value="image/avif">AVIF (.avif)</option>
+            </select>
+          </label>
+
+          <label class="row" style="min-width:140px">
+            <span class="small">Quality</span>
+            <input id="quality" type="range" min="1" max="100" step="1" value="82" />
+            <div class="muted small" style="margin-top:6px">JPEG/WebP/AVIF only — <span id="quality-value">82</span>%</div>
+          </label>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <label class="row" style="flex:1;min-width:160px">
+            <span class="small">Max width (px)</span>
+            <input id="max-width" type="number" min="1" placeholder="leave blank to keep original" />
+          </label>
+
+          <label class="row" style="min-width:140px">
+            <span class="small">Max height (px)</span>
+            <input id="max-height" type="number" min="1" placeholder="leave blank to keep original" />
+          </label>
+        </div>
+
+        <div class="actions" style="margin-top:12px">
+          <button class="btn" id="convert-btn" disabled>Convert & Compress</button>
+          <button class="btn ghost" id="reset-btn" type="button">Reset</button>
+        </div>
+
+        <footer>Tip: Use WebP/AVIF for smaller files. AVIF yields the best compression but may not be supported everywhere.</footer>
+      </div>
+
+    </section>
+
+    <section class="preview">
+      <div class="image-frame">
+        <img id="preview" class="preview-img" alt="Image preview" src="" style="display:none" />
+        <div id="placeholder" style="text-align:center;padding:30px;color:var(--muted)">No image uploaded — preview will appear here.</div>
+
+        <div class="meta" id="meta" style="display:none">
+          <div class="pill" id="orig-dim">—</div>
+          <div class="pill" id="orig-size">—</div>
+          <div class="pill" id="orig-type">—</div>
+        </div>
+
+        <div id="result-area" style="display:none;width:100%">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+            <div class="size-info" id="result-size">Compressed size: —</div>
+            <div class="download-area">
+              <a id="download-link" class="btn" download>Download</a>
+              <button id="preview-open" class="btn ghost">Open in new tab</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div class="card" style="flex:1;min-width:220px">
+          <div style="font-weight:600">Quick actions</div>
+          <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn ghost" id="download-original" disabled>Download Original</button>
+            <button class="btn ghost" id="copy-link" disabled>Copy Data URL</button>
+          </div>
+        </div>
+
+        <div class="card" style="min-width:140px;display:flex;flex-direction:column;justify-content:center;align-items:flex-end">
+          <div style="font-size:12px;color:var(--muted)">Built for mobile</div>
+          <div style="font-weight:700;color:var(--brand);font-size:12px">Responsive & accessible</div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- hidden canvas used for conversion -->
+  <canvas id="editor-canvas" style="display:none"></canvas>
+
+  <script>
+    (function(){
+      // helpers
+      const $ = id => document.getElementById(id);
+      const fmtBytes = (b)=>{
+        if(!b && b!==0) return '—';
+        const units=['B','KB','MB','GB'];
+        let i=0;let n=b;
+        while(n>=1024 && i<units.length-1){n/=1024;i++}
+        return n.toFixed(n<10 && i>0?2:1)+' '+units[i];
+      }
+
+      const fileInput = $('file-input');
+      const uploader = $('uploader');
+      const preview = $('preview');
+      const placeholder = $('placeholder');
+      const origDim = $('orig-dim');
+      const origSize = $('orig-size');
+      const origType = $('orig-type');
+      const meta = $('meta');
+      const convertBtn = $('convert-btn');
+      const resetBtn = $('reset-btn');
+      const formatSelect = $('format-select');
+      const quality = $('quality');
+      const qualityValue = $('quality-value');
+      const maxWidth = $('max-width');
+      const maxHeight = $('max-height');
+      const downloadLink = $('download-link');
+      const resultArea = $('result-area');
+      const resultSize = $('result-size');
+      const previewOpen = $('preview-open');
+      const downloadOriginal = $('download-original');
+      const copyLink = $('copy-link');
+      const editorCanvas = $('editor-canvas');
+
+      let currentFile = null;
+      let originalDataUrl = null;
+      let lastBlobUrl = null;
+
+      // quality UI
+      quality.addEventListener('input',()=>{qualityValue.textContent = quality.value});
+
+      // drag & drop
+      ['dragenter','dragover'].forEach(e=>{
+        uploader.addEventListener(e,ev=>{ev.preventDefault();ev.stopPropagation();uploader.classList.add('dragover')});
+      });
+      ['dragleave','drop'].forEach(e=>{
+        uploader.addEventListener(e,ev=>{ev.preventDefault();ev.stopPropagation();uploader.classList.remove('dragover')});
+      });
+
+      uploader.addEventListener('drop',ev=>{
+        const f = ev.dataTransfer.files && ev.dataTransfer.files[0];
+        if(f) handleFile(f);
+      });
+
+      uploader.addEventListener('click',()=>fileInput.click());
+      fileInput.addEventListener('change',e=>{const f=e.target.files[0]; if(f) handleFile(f)});
+
+      function handleFile(file){
+        if(!file) return;
+        if(file.size>30*1024*1024){alert('File too large — please use files under 30MB.');return}
+        currentFile = file;
+        // create preview URL
+        if(originalDataUrl){URL.revokeObjectURL(originalDataUrl);originalDataUrl=null}
+        originalDataUrl = URL.createObjectURL(file);
+        preview.src = originalDataUrl;
+        preview.style.display = '';
+        placeholder.style.display = 'none';
+
+        // read dimensions
+        const img = new Image();
+        img.onload = ()=>{
+          origDim.textContent = img.width+' × '+img.height+' px';
+          origSize.textContent = fmtBytes(file.size);
+          origType.textContent = file.type || '—';
+          meta.style.display = '';
+          convertBtn.disabled = false;
+          downloadOriginal.disabled = false;
+          copyLink.disabled = false;
+        };
+        img.onerror = ()=>{
+          alert('Unable to preview this image.');
+        };
+        img.src = originalDataUrl;
+      }
+
+      // reset
+      resetBtn.addEventListener('click',()=>{
+        currentFile = null;
+        preview.src='';
+        preview.style.display='none';
+        placeholder.style.display='block';
+        meta.style.display='none';
+        resultArea.style.display='none';
+        convertBtn.disabled=true;
+        downloadOriginal.disabled=true;
+        copyLink.disabled=true;
+        fileInput.value='';
+        if(originalDataUrl){URL.revokeObjectURL(originalDataUrl);originalDataUrl=null}
+        if(lastBlobUrl){URL.revokeObjectURL(lastBlobUrl);lastBlobUrl=null}
+      });
+
+      // conversion
+      convertBtn.addEventListener('click',async ()=>{
+        if(!currentFile) return;
+        convertBtn.disabled=true;convertBtn.textContent='Converting...';
+        try{
+          const outType = formatSelect.value;
+          let q = parseInt(quality.value,10)/100;
+          if(isNaN(q)||q<=0) q = 0.8;
+
+          // load image into canvas
+          const img = await createImageBitmap(currentFile).catch(()=>null);
+          let drawImg;
+          if(img){ drawImg = img; }
+          else {
+            // fallback to Image element
+            drawImg = await new Promise((res,rej)=>{const im=new Image();im.onload=()=>res(im);im.onerror=rej;im.src=originalDataUrl});
+          }
+
+          const naturalW = drawImg.width||drawImg.naturalWidth;
+          const naturalH = drawImg.height||drawImg.naturalHeight;
+
+          // calculate target dimensions while keeping aspect
+          let targetW = parseInt(maxWidth.value,10) || naturalW;
+          let targetH = parseInt(maxHeight.value,10) || naturalH;
+
+          // if both blank keep original
+          if(!maxWidth.value && !maxHeight.value){targetW = naturalW; targetH = naturalH}
+          else if(maxWidth.value && !maxHeight.value){ // limit by width
+            const ratio = naturalH/naturalW; targetH = Math.round(targetW*ratio);
+          } else if(!maxWidth.value && maxHeight.value){
+            const ratio = naturalW/naturalH; targetW = Math.round(targetH*ratio);
+          } else {
+            // both provided -> fit inside
+            const ratio = Math.min(targetW/naturalW, targetH/naturalH);
+            if(ratio<1){targetW = Math.round(naturalW*ratio); targetH = Math.round(naturalH*ratio)}
+            else {targetW = naturalW; targetH = naturalH}
+          }
+
+          // draw to canvas
+          const canvas = editorCanvas;
+          canvas.width = targetW;
+          canvas.height = targetH;
+          const ctx = canvas.getContext('2d');
+          ctx.clearRect(0,0,canvas.width,canvas.height);
+          ctx.drawImage(drawImg,0,0,targetW,targetH);
+
+          // special handling: PNG does not accept quality in toBlob; for PNG we can use default lossless
+          const mime = outType;
+
+          // create blob
+          const blob = await new Promise((resolve)=>{
+            // check browser support for avif; fallback to webp or jpeg
+            let chosenMime = mime;
+            if(mime==='image/avif' && !('toBlob' in HTMLCanvasElement.prototype)) chosenMime = 'image/webp';
+            // Some browsers might not support avif/webp in toBlob; try and fallback
+            canvas.toBlob(async function(b){
+              if(!b){
+                // try fallback to jpeg
+                canvas.toBlob(resolve,'image/jpeg',q);
+              } else resolve(b);
+            }, chosenMime, (chosenMime === 'image/png') ? undefined : q);
+          });
+
+          if(!blob){throw new Error('Conversion failed');}
+
+          // revoke old blob url
+          if(lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
+          lastBlobUrl = URL.createObjectURL(blob);
+
+          // set download link
+          const ext = mimeToExt(formatSelect.value);
+          const suggestedName = (currentFile.name.replace(/\.[^.]+$/, '') || 'image') + '-converted' + ext;
+          downloadLink.href = lastBlobUrl;
+          downloadLink.download = suggestedName;
+          downloadLink.textContent = 'Download ' + ext.replace('.','').toUpperCase();
+
+          previewOpen.onclick = ()=>{ window.open(lastBlobUrl,'_blank') };
+
+          resultSize.textContent = 'Compressed size: ' + fmtBytes(blob.size) + ' (' + (Math.round((blob.size/currentFile.size)*1000)/10) + '% of original)';
+          resultArea.style.display='block';
+
+        }catch(err){
+          console.error(err);alert('Conversion failed: '+(err.message||err));
+        }finally{
+          convertBtn.disabled=false;convertBtn.textContent='Convert & Compress';
+        }
+      });
+
+      function mimeToExt(mime){
+        switch(mime){
+          case 'image/jpeg': return '.jpg';
+          case 'image/png': return '.png';
+          case 'image/webp': return '.webp';
+          case 'image/avif': return '.avif';
+          default: return '.img';
+        }
+      }
+
+      // quick actions
+      downloadOriginal.addEventListener('click',()=>{
+        if(!currentFile) return;
+        const url = originalDataUrl || URL.createObjectURL(currentFile);
+        const a = document.createElement('a');a.href=url;a.download=currentFile.name;document.body.appendChild(a);a.click();a.remove();
+      });
+
+      copyLink.addEventListener('click',async ()=>{
+        if(!currentFile) return;
+        try{
+          // try to create dataURL via FileReader
+          const dataUrl = await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(currentFile)});
+          await navigator.clipboard.writeText(dataUrl);
+          alert('Data URL copied to clipboard (large strings may be truncated by some apps).');
+        }catch(e){alert('Failed to copy — try downloading instead.')}
+      });
+
+      // accessibility: keyboard support for uploader
+      uploader.addEventListener('keydown',(e)=>{if(e.key==='Enter' || e.key===' ') fileInput.click()});
+
+      // initial feature availability note: hide AVIF if not supported
+      (function detectFormats(){
+        const canvas = document.createElement('canvas');
+        canvas.width=1;canvas.height=1;
+        const avifSupported = canvas.toDataURL('image/avif').indexOf('data:image/avif')===0;
+        const webpSupported = canvas.toDataURL('image/webp').indexOf('data:image/webp')===0;
+        if(!avifSupported){
+          // remove avif option but keep it selectable programmatically
+          for(let i=0;i<formatSelect.options.length;i++){
+            if(formatSelect.options[i].value==='image/avif'){ formatSelect.options[i].text += ' (may be unsupported)'; }
+          }
+        }
+        if(!webpSupported){
+          for(let i=0;i<formatSelect.options.length;i++){
+            if(formatSelect.options[i].value==='image/webp'){ formatSelect.options[i].text += ' (may be unsupported)'; }
+          }
+        }
+      })();
+
+    })();
+  </script>
+</body>
+</html>
