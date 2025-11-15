@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Image Resizer</title>
+
+  <style>
+    :root {
+      --blue: #1e90ff;
+      --light-blue: #e8f3ff;
+      --white: #ffffff;
+      --gray: #6b7280;
+      --radius: 14px;
+      font-family: "Inter", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    html,body{height:100%}
+    body {
+      margin: 0;
+      padding: 20px;
+      background: var(--light-blue);
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .container {
+      background: var(--white);
+      width: 100%;
+      max-width: 920px;
+      padding: 22px;
+      border-radius: var(--radius);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    h1 {
+      text-align: center;
+      color: var(--blue);
+      margin-bottom: 12px;
+    }
+
+    .upload-box {
+      border: 2px dashed var(--blue);
+      padding: 20px;
+      border-radius: var(--radius);
+      text-align: center;
+      color: var(--gray);
+      cursor: pointer;
+      transition: 0.12s;
+      user-select: none;
+    }
+
+    .upload-box:hover { background: #f5faff; }
+
+    input[type="file"] { display: none; }
+
+    /* Preview */
+    .preview-wrapper { margin-top: 18px; display: none; }
+
+    .preview-img {
+      width: 100%;
+      max-height: 420px;
+      object-fit: contain;
+      border-radius: 12px;
+      background: #fafafa;
+      padding: 8px;
+      display:block;
+    }
+
+    /* Inputs */
+    .resize-settings {
+      margin-top: 14px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: end;
+    }
+
+    .resize-settings .field { flex: 1 1 calc(33% - 12px); min-width:120px }
+    .resize-settings label{display:block;font-size:13px;color:var(--gray);margin-bottom:6px}
+    .resize-settings input {
+      width:100%;padding:10px;border-radius:10px;border:1px solid #e6f0ff;font-size:15px
+    }
+
+    .controls { display:flex;gap:12px;flex:1;align-items:center }
+
+    .btn {
+      background: var(--blue);
+      border: none;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .btn.ghost{background:transparent;color:var(--blue);border:1px solid rgba(30,144,255,0.12)}
+
+    .btn:disabled { opacity:0.55;cursor:not-allowed }
+
+    .download-section { display: none; margin-top: 14px; text-align: center; }
+
+    .download-link { background: var(--blue); color: white; padding: 12px 18px; border-radius: 12px; text-decoration: none; font-weight:700 }
+
+    .meta { font-size:13px;color:var(--gray);margin-top:8px }
+
+    @media (max-width: 720px){
+      .resize-settings .field { flex:1 1 100% }
+      .controls{flex-direction:column;align-items:stretch}
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>Image Resizer</h1>
+
+    <label class="upload-box" id="uploadBox" tabindex="0">
+      <strong>Click to upload an image</strong><br />
+      or drag & drop an image file
+      <input type="file" id="imageInput" accept="image/*" />
+    </label>
+
+    <div class="preview-wrapper" id="previewWrapper" aria-live="polite">
+      <img id="previewImage" class="preview-img" alt="Uploaded image preview" />
+
+      <div class="resize-settings">
+        <div class="field">
+          <label for="widthInput">Width (px)</label>
+          <input type="number" id="widthInput" placeholder="Enter width" min="1" />
+        </div>
+
+        <div class="field">
+          <label for="heightInput">Height (px)</label>
+          <input type="number" id="heightInput" placeholder="Enter height" min="1" />
+        </div>
+
+        <div class="field" style="flex:0 0 160px;min-width:120px;display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+          <label style="visibility:hidden">Actions</label>
+          <div class="controls" style="width:100%">
+            <button class="btn" id="resizeBtn">Resize Image</button>
+            <button class="btn ghost" id="resetBtn" type="button">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="meta" id="meta"></div>
+
+      <div class="download-section" id="downloadSection">
+        <p><strong>Resized Image Ready</strong></p>
+        <a id="downloadLink" class="download-link" download="resized-image.jpg">Download</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Elements
+    const uploadBox = document.getElementById('uploadBox');
+    const imageInput = document.getElementById('imageInput');
+    const previewWrapper = document.getElementById('previewWrapper');
+    const previewImage = document.getElementById('previewImage');
+    const widthInput = document.getElementById('widthInput');
+    const heightInput = document.getElementById('heightInput');
+    const resizeBtn = document.getElementById('resizeBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const downloadSection = document.getElementById('downloadSection');
+    const downloadLink = document.getElementById('downloadLink');
+    const meta = document.getElementById('meta');
+
+    let originalDataUrl = null;
+
+    // Helpers
+    const fmtBytes = (b)=>{ if(!b && b!==0) return '—'; const u=['B','KB','MB']; let i=0,n=b; while(n>=1024&&i<u.length-1){n/=1024;i++} return n.toFixed(n<10 && i>0?2:1)+' '+u[i] }
+
+    // Click to open file picker
+    uploadBox.addEventListener('click', ()=> imageInput.click());
+    uploadBox.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') { e.preventDefault(); imageInput.click(); } });
+
+    // Drag & Drop
+    ['dragenter','dragover'].forEach(ev=> uploadBox.addEventListener(ev, (e)=>{ e.preventDefault(); e.stopPropagation(); uploadBox.style.boxShadow = '0 6px 18px rgba(30,144,255,0.12)'; }));
+    ['dragleave','drop'].forEach(ev=> uploadBox.addEventListener(ev, (e)=>{ e.preventDefault(); e.stopPropagation(); uploadBox.style.boxShadow = ''; }));
+    uploadBox.addEventListener('drop', (e)=>{
+      const f = e.dataTransfer.files && e.dataTransfer.files[0];
+      if(f) handleFile(f);
+    });
+
+    imageInput.addEventListener('change', (e)=>{ const f = e.target.files[0]; if(f) handleFile(f); });
+
+    function handleFile(file){
+      if(!file) return;
+      if(!file.type.startsWith('image/')){ alert('Please upload an image file.'); return; }
+      if(file.size > 50*1024*1024){ alert('Please use images under 50MB.'); return; }
+
+      const reader = new FileReader();
+      reader.onload = ()=>{
+        originalDataUrl = reader.result;
+        previewImage.src = originalDataUrl;
+        previewWrapper.style.display = 'block';
+        downloadSection.style.display = 'none';
+        meta.textContent = `Original: ${file.name} — ${fmtBytes(file.size)}`;
+
+        // prefill inputs with original dimensions (async)
+        const tmp = new Image(); tmp.onload = ()=>{ widthInput.value = tmp.width; heightInput.value = tmp.height }; tmp.src = originalDataUrl;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Reset
+    resetBtn.addEventListener('click', ()=>{
+      originalDataUrl = null;
+      previewImage.src = '';
+      previewWrapper.style.display = 'none';
+      downloadSection.style.display = 'none';
+      imageInput.value = '';
+      meta.textContent = '';
+    });
+
+    // Resize
+    resizeBtn.addEventListener('click', ()=>{
+      const newWidth = parseInt(widthInput.value, 10);
+      const newHeight = parseInt(heightInput.value, 10);
+      if(!originalDataUrl){ alert('Please upload an image first.'); return; }
+      if(!newWidth || !newHeight || newWidth <= 0 || newHeight <=0){ alert('Please enter valid positive width and height.'); return; }
+
+      const img = new Image();
+      img.onload = ()=>{
+        // create canvas and draw
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = newWidth;
+        canvas.height = newHeight;
+        ctx.drawImage(img, 0, 0, newWidth, newHeight);
+
+        // produce data URL (jpeg) and wire download
+        try{
+          const dataURL = canvas.toDataURL('image/jpeg', 0.92);
+          downloadLink.href = dataURL;
+          downloadLink.download = `resized-${Date.now()}.jpg`;
+          downloadSection.style.display = 'block';
+          // update preview to show resized image as well
+          previewImage.src = dataURL;
+          meta.textContent = `Resized to ${newWidth} × ${newHeight} px — approx ${fmtBytes(Math.round((dataURL.length*3)/4))}`;
+        }catch(err){
+          console.error(err); alert('Failed to generate resized image: '+err.message);
+        }
+      };
+
+      // start loading image (set src after onload handler bound)
+      img.src = originalDataUrl;
+    });
+
+  </script>
+
+</body>
+</html>
